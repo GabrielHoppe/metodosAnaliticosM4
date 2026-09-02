@@ -16,12 +16,3 @@ Este projeto implementa um simulador de eventos discretos para filas do tipo G/G
 python3 simulador_fila.py --servers 1 --capacity 5 --arrival-min 2 --arrival-max 5 --service-min 3 --service-max 5
 python3 simulador_fila.py --servers 2 --capacity 5 --arrival-min 2 --arrival-max 5 --service-min 3 --service-max 5
 ```
-
-## Observação
-
-O código foi pensado para permitir a execução dos cenários solicitados na atividade:
-
-- G/G/1/5, chegadas 2...5, atendimento 3...5
-- G/G/2/5, chegadas 2...5, atendimento 3...5
-
-Os dados podem ser usados para preencher o relatório da atividade sem a necessidade de gerar um PDF aqui.
