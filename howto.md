@@ -1,41 +1,119 @@
-# Como executar o simulador de filas em tandem
+# Como executar o simulador generalizado
 
 ## Requisitos
 
 - Python 3.9 ou superior.
-- Nenhuma biblioteca externa.
+- Nenhuma biblioteca externa obrigatória.
 
-## Execução da rede de validação
+## Execução
 
-Na raiz do projeto, execute:
+Na raiz do projeto, execute o modelo generalizado:
 
 ```bash
-python3 simulador_tandem.py
+python3 simulador_tandem.py modelo.yml
 ```
 
-Essa execução simula:
+O arquivo YAML define toda a rede: parâmetros da simulação, filas e
+roteamento. O programa informa o tempo global, os aleatórios utilizados,
+perdas, tempos acumulados por estado e probabilidades de cada fila.
 
-| Fila | Chegadas externas | Atendimento | Servidores | Capacidade |
-|---|---:|---:|---:|---:|
-| 1 | 1..5 | 4..5 | 2 | 3 |
-| 2 | nenhuma | 1..3 | 1 | 5 |
-
-A Fila 1 recebe o primeiro cliente em `t = 2,5`. Cada cliente que termina o atendimento
-na Fila 1 é encaminhado para a Fila 2. Depois do atendimento na Fila 2, o cliente sai
-do sistema.
-
-Os parâmetros opcionais são:
+Parâmetros opcionais:
 
 ```text
---seed N             semente do gerador (padrão: 1)
---first-arrival T    instante do primeiro cliente (padrão: 2.5)
---max-randoms N      quantidade máxima de aleatórios (padrão: 100000)
+--seed N             substitui a semente do arquivo
+--first-arrival T    substitui a chegada inicial da fila 0
+--max-randoms N      substitui o limite de aleatórios
 ```
 
 Exemplo:
 
 ```bash
-python3 simulador_tandem.py --seed 1 --first-arrival 2.5 --max-randoms 100000
+python3 simulador_tandem.py modelo.yml --seed 1 --max-randoms 100000
+```
+
+## Formato do arquivo YAML
+
+O modelo possui as seções `simulation`, `queues` e `routes`:
+
+```yaml
+simulation:
+  seed: 1
+  first_arrival: 2.0
+  max_randoms: 100000
+
+queues:
+  - name: 1
+    arrival: [2, 4]
+    service: [1, 2]
+    servers: 1
+    capacity: null
+
+routes:
+  - from: 0
+    to: 1
+    probability: 0.2
+```
+
+As filas são identificadas pelo índice na lista, começando em zero:
+
+- `arrival`: intervalo de chegadas externas; use `null` quando a fila não
+  recebe chegadas externas;
+- `service`: intervalo uniforme de atendimento;
+- `servers`: quantidade de servidores;
+- `capacity`: capacidade máxima; `null` significa capacidade ilimitada.
+
+Cada item de `routes` informa uma origem, um destino e uma probabilidade. Use
+`to: null` para retirar o cliente do sistema. Podem ser definidas rotas para
+qualquer fila, inclusive ciclos. As probabilidades de uma origem podem somar
+menos que 1; a parcela restante representa saída da rede.
+
+Para agendar mais de uma chegada inicial, adicione:
+
+```yaml
+initial_arrivals:
+  - queue: 0
+    time: 2.0
+  - queue: 2
+    time: 5.0
+```
+
+Sem `initial_arrivals`, o simulador agenda uma chegada na fila `0` no instante
+definido por `simulation.first_arrival`.
+
+## Modelo de validação
+
+O arquivo `modelo.yml` usa:
+
+| Fila | Chegadas externas | Atendimento | Servidores | Capacidade |
+|---|---:|---:|---:|---:|
+| 1 | 2..4 | 1..2 | 1 | ilimitada |
+| 2 | nenhuma | 4..6 | 2 | 5 |
+| 3 | nenhuma | 5..15 | 2 | 10 |
+
+A primeira chegada ocorre em `t = 2.0`, as filas começam vazias e a simulação
+termina ao consumir o 100.000º aleatório.
+
+Resultado de referência:
+
+```text
+Tempo total da simulação: 50788.222050
+Aleatórios usados: 100000
+
+Fila 1:
+  Clientes perdidos: 0
+
+Fila 2:
+  Clientes perdidos: 1
+
+Fila 3:
+  Clientes perdidos: 11690
+```
+
+O programa também imprime os tempos acumulados e as probabilidades de todos
+os estados. Cada probabilidade é calculada como:
+
+```text
+tempo acumulado do estado / tempo global
 ```
 
 ## Gerador pseudoaleatório
@@ -47,66 +125,13 @@ X(i+1) = (1664525 * X(i) + 1013904223) mod 2^32
 U(i) = X(i) / 2^32
 ```
 
-A semente padrão é `1`. O contador é incrementado somente quando um aleatório é
-solicitado para um intervalo de chegada, atendimento ou roteamento probabilístico.
-Ao utilizar o 100.000º aleatório, a simulação é encerrada.
+Um número é consumido para cada intervalo de chegada, atendimento ou decisão
+de roteamento probabilístico. A simulação encerra ao utilizar o limite
+configurado.
 
-## Sintaxe de roteamento
+## Simulador da etapa anterior
 
-O modelo utiliza a estrutura:
-
-```python
-{fila_origem: [(fila_destino, probabilidade), ...]}
-```
-
-Os índices das filas começam em zero. Assim, a rede em tandem usada na validação é:
-
-```python
-{0: [(1, 1.0)]}
-```
-
-Isso significa que 100% dos clientes que saem da Fila 1 passam para a Fila 2.
-Uma fila que não aparece como origem na tabela de roteamento envia seus clientes
-para fora da rede após o atendimento.
-
-## Saída
-
-O programa informa:
-
-- tempo global da simulação;
-- quantidade de aleatórios utilizados;
-- perdas de cada fila;
-- tempo acumulado em cada estado de cada fila;
-- probabilidade de permanência em cada estado.
-
-As probabilidades são calculadas por `tempo acumulado do estado / tempo global`.
-
-## Resultado da rede de validação
-
-Com os parâmetros padrão (`seed=1`, primeiro cliente em `t=2.5` e 100.000
-aleatórios), o resultado é:
-
-```text
-Tempo total da simulação: 100649.370495
-Aleatórios usados: 100000
-
-Fila 1:
-  Perdas: 393
-  Tempos acumulados: [1120.657008, 49584.135790, 43659.663972, 6284.913723]
-  Probabilidades:    [0.011134, 0.492642, 0.433780, 0.062444]
-
-Fila 2:
-  Perdas: 0
-  Tempos acumulados: [34365.950489, 60076.741145, 6191.404839,
-                      15.274022, 0.000000, 0.000000]
-  Probabilidades:    [0.341442, 0.596891, 0.061515, 0.000152,
-                      0.000000, 0.000000]
-```
-
-## Valores de referência da Parte 1
-
-O programa anterior continua disponível em `simulador_fila.py`. Seus cenários de
-fila simples podem ser executados, por exemplo, com:
+O simulador de fila única continua disponível em `simulador_fila.py`:
 
 ```bash
 python3 simulador_fila.py --servers 1 --capacity 5 \
@@ -115,6 +140,3 @@ python3 simulador_fila.py --servers 1 --capacity 5 \
 python3 simulador_fila.py --servers 2 --capacity 5 \
   --arrival-min 2 --arrival-max 5 --service-min 3 --service-max 5
 ```
-
-Esses comandos reproduzem os resultados entregues na Parte 1 usando a semente
-padrão `1`.
