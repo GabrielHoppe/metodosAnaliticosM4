@@ -1,0 +1,47 @@
+# Modelo da rede da etapa de generalização.
+simulation:
+  seed: 1
+  first_arrival: 2.0
+  max_randoms: 100000
+
+# Uma fila sem capacity possui capacidade ilimitada.
+queues:
+  - name: 1
+    arrival: [2, 4]
+    service: [1, 2]
+    servers: 1
+    capacity: null
+  - name: 2
+    arrival: null
+    service: [4, 6]
+    servers: 2
+    capacity: 5
+  - name: 3
+    arrival: null
+    service: [5, 15]
+    servers: 2
+    capacity: 10
+
+# Uma rota para fora da rede é representada por to: null.
+routes:
+  - from: 0
+    to: 1
+    probability: 0.2
+  - from: 0
+    to: 2
+    probability: 0.8
+  - from: 1
+    to: 0
+    probability: 0.3
+  - from: 1
+    to: 2
+    probability: 0.5
+  - from: 1
+    to: null
+    probability: 0.2
+  - from: 2
+    to: 1
+    probability: 0.7
+  - from: 2
+    to: null
+    probability: 0.3
